@@ -1,14 +1,17 @@
 package main
 
 import (
-	"fmt"
-	"github.com/micah5/fitter"
+	"github.com/micah5/exhaustive-fitter"
 )
 
 func main() {
-	polygon := fitter.Polygon{Vertices: []fitter.Point{{X: 0, Y: 2}, {X: 1, Y: 1}, {X: 1, Y: 0}, {X: 0, Y: 1}}}
-
-	maxSquare, trans := fitter.MaxFitSquare(polygon)
-	fmt.Println("Max square:", maxSquare)
-	fmt.Println("Trans:", trans)
+	parallelogram := []float64{
+		0, 2,
+		1, 1,
+		1, 0,
+		0, 1,
+	}
+	circle := fitter.Circle(10)
+	result := fitter.Transform(circle, parallelogram)
+	fitter.Plot("parallelogram.png", parallelogram, result)
 }

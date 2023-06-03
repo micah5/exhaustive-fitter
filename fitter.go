@@ -1,40 +1,9 @@
-package main
+package fitter
 
 import (
 	"gonum.org/v1/gonum/mat"
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/vg"
-	"image/color"
 	"math"
 )
-
-func PlotShapes(shape1, shape2 []Point, path string) {
-	p := plot.New()
-
-	addShapeToPlot(p, shape1, plotter.Polygon{Color: color.RGBA{R: 255, A: 255}})
-	addShapeToPlot(p, shape2, plotter.Polygon{Color: color.RGBA{G: 255, A: 255}})
-
-	if err := p.Save(10*vg.Inch, 10*vg.Inch, path); err != nil {
-		panic(err)
-	}
-}
-
-func addShapeToPlot(p *plot.Plot, shape []Point, lineStyle plotter.Polygon) {
-	pts := make(plotter.XYs, len(shape))
-	for i := range shape {
-		pts[i].X = shape[i].X
-		pts[i].Y = shape[i].Y
-	}
-
-	polygon, err := plotter.NewPolygon(pts)
-	if err != nil {
-		panic(err)
-	}
-
-	polygon.Color = lineStyle.Color
-	p.Add(polygon)
-}
 
 type Point struct {
 	X float64
@@ -87,17 +56,42 @@ func transformPoint(pt Point, transform mat.Matrix) Point {
 	return Point{result.At(0, 0) / w, result.At(1, 0) / w}
 }
 
-func Circle(w, h float64, resolution int) []Point {
-	vertices := make([]Point, 0)
-	for i := 0; i < resolution; i++ {
-		angle := float64(i) / float64(resolution) * math.Pi * 2
-		vertex := Point{math.Cos(angle)*w/2.0 + w/2.0, math.Sin(angle)*h/2.0 + h/2.0}
-		vertices = append(vertices, vertex)
+// Compute the area of a quadrilateral given its vertices.
+func quadrilateralArea(vertices [4]Point) float64 {
+	// Compute the area using the cross product.
+	area := 0.0
+	for i := 0; i < 4; i++ {
+		j := (i + 1) % 4
+		area += vertices[i].X*vertices[j].Y - vertices[j].X*vertices[i].Y
 	}
-	return vertices
+	return math.Abs(area) / 2.0
 }
 
-func main() {
+// Compute all possible sets of four points and return the one with the largest area.
+func largestQuadrilateral(vertices []Point) [4]Point {
+	if len(vertices) < 4 {
+		panic("Need at least four vertices")
+	}
+	maxArea := -1.0
+	var maxVertices [4]Point
+	for i := 0; i < len(vertices); i++ {
+		for j := i + 1; j < len(vertices); j++ {
+			for k := j + 1; k < len(vertices); k++ {
+				for l := k + 1; l < len(vertices); l++ {
+					quad := [4]Point{vertices[i], vertices[j], vertices[k], vertices[l]}
+					area := quadrilateralArea(quad)
+					if area > maxArea {
+						maxArea = area
+						maxVertices = quad
+					}
+				}
+			}
+		}
+	}
+	return maxVertices
+}
+
+func Transform(flatSrc, flatDst []float64) []float64 {
 	// Example usage.
 	src := [4]Point{
 		{0, 0},
@@ -105,24 +99,17 @@ func main() {
 		{1, 1},
 		{0, 1},
 	}
-	dst := [4]Point{
-		{0, 2},
-		{1, 1},
-		{1, 0},
-		{0, 1},
-	}
+	polygon := build(flatDst)
+	dst := largestQuadrilateral(polygon)
 	transform := computeProjectiveTransform(src, dst)
-	//fmt.Println(mat.Formatted(&transform))
 
 	// Transform each source point and print the result.
-	shape := Circle(1, 1, 8)
+	shape := build(flatSrc)
 	transformed := make([]Point, 0)
 	for _, pt := range shape {
 		transformedPt := transformPoint(pt, &transform)
-		//fmt.Println("Original point:", pt)
-		//fmt.Println("Transformed point:", transformedPt)
 		transformed = append(transformed, transformedPt)
 	}
 
-	PlotShapes(dst[:], transformed, "test.png")
+	return flatten(transformed)
 }

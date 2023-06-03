@@ -5,13 +5,22 @@ import (
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/vg"
 	"image/color"
+	"math/rand"
 )
 
-func PlotShapes(shape1, shape2 []Point, path string) {
+func getRandomColor() color.RGBA {
+	r := uint8(rand.Intn(256))
+	g := uint8(rand.Intn(256))
+	b := uint8(rand.Intn(256))
+	return color.RGBA{R: r, G: g, B: b, A: 255}
+}
+
+func Plot(path string, shapes ...[]float64) {
 	p := plot.New()
 
-	addShapeToPlot(p, shape1, plotter.Polygon{Color: color.RGBA{R: 255, A: 255}})
-	addShapeToPlot(p, shape2, plotter.Polygon{Color: color.RGBA{G: 255, A: 255}})
+	for _, shape := range shapes {
+		addShapeToPlot(p, build(shape), plotter.Polygon{Color: getRandomColor()})
+	}
 
 	if err := p.Save(10*vg.Inch, 10*vg.Inch, path); err != nil {
 		panic(err)
