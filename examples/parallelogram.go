@@ -12,6 +12,6 @@ func main() {
 		0, 1,
 	}
 	circle := fitter.Circle(10)
-	result := fitter.Transform(circle, parallelogram)
+	result, _ := fitter.Transform(circle, parallelogram)
 	fitter.Plot("parallelogram.png", parallelogram, result)
 }

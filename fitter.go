@@ -1,6 +1,7 @@
 package fitter
 
 import (
+	"errors"
 	"gonum.org/v1/gonum/mat"
 	"math"
 )
@@ -8,6 +9,35 @@ import (
 type Point struct {
 	X float64
 	Y float64
+}
+
+// Function to compute the cross product of two vectors defined by points A, B, C
+func crossProduct(A, B, C Point) float64 {
+	ABx := B.X - A.X
+	ABy := B.Y - A.Y
+	BCx := C.X - B.X
+	BCy := C.Y - B.Y
+	return ABx*BCy - ABy*BCx
+}
+
+// Function to determine if a polygon is concave
+func isConcave(polygon []Point) bool {
+	if len(polygon) < 4 { // Triangle is always convex
+		return false
+	}
+	crossProductSign := 0.0
+	for i := 0; i < len(polygon); i++ {
+		A := polygon[i]
+		B := polygon[(i+1)%len(polygon)]
+		C := polygon[(i+2)%len(polygon)]
+		cross := crossProduct(A, B, C)
+		if crossProductSign == 0.0 {
+			crossProductSign = cross
+		} else if (cross > 0 && crossProductSign < 0) || (cross < 0 && crossProductSign > 0) {
+			return true
+		}
+	}
+	return false
 }
 
 // Function to compute the projective transformation matrix given 4 correspondences.
@@ -91,7 +121,7 @@ func largestQuadrilateral(vertices []Point) [4]Point {
 	return maxVertices
 }
 
-func Transform(flatSrc, flatDst []float64) []float64 {
+func Transform(flatSrc, flatDst []float64) ([]float64, error) {
 	// Example usage.
 	src := [4]Point{
 		{0, 0},
@@ -100,6 +130,9 @@ func Transform(flatSrc, flatDst []float64) []float64 {
 		{0, 1},
 	}
 	polygon := build(flatDst)
+	if isConcave(polygon) {
+		return nil, errors.New("polygon is concave")
+	}
 	dst := largestQuadrilateral(polygon)
 	transform := computeProjectiveTransform(src, dst)
 
@@ -111,5 +144,5 @@ func Transform(flatSrc, flatDst []float64) []float64 {
 		transformed = append(transformed, transformedPt)
 	}
 
-	return flatten(transformed)
+	return flatten(transformed), nil
 }
